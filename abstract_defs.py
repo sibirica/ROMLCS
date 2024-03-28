@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import List, Dict, Union, Tuple, Iterable, Generator, Callable, Optional
 from collections import Counter
-from utils import VP_from_
+#from utils import VP_from_
 import functools
 import numpy as np
 
@@ -69,21 +69,27 @@ class VectorPolynomial(object):
     The number of entries is generally equal to the number of variables.
     :attribute n_vars: number of variables
     :attribute degree: degree of the polynomial
-    :attribute data: iterable where each entry is a polynomial
+    :attribute data: iterable where kth entry is a (1, k)-linear form
+    :attribute polys: iterable with Polynomials corresponding to each entry
     """
-    data: Iterable[Polynomial]
+    #data: Iterable[Polynomial]
+    data: Iterable[np.ndarray]
+    polys: Iterable[Polynomial] = field(init=False)
     degree: int = field(init=False)
     n_vars: int = field(init=False)
     n_entries: int = field(init=False)
     
     def __post_init__(self):
-        self.n_entries = len(self.data)
-        self.n_vars = self.data[0].n_vars
-        self.degree = max([poly.degree for poly in self.data])
+        if not isinstance(self.data[0], np.ndarray):
+            self.data[0] = np.array(self.data[0]) # in case we use a list shorthand
+        self.n_entries = len(self.data[0])
+        self.n_vars = self.data[1].shape[1] if len(self.data)>1 else self.n_entries
+        self.degree = len(self.data)-1
+        self.polys = [Polynomial([order[i, ...] for order in self.data]) for i in range(self.n_entries)]
         
     def __repr__(self) -> str:
         string = ""
-        for ind, poly in enumerate(self.data):
+        for ind, poly in enumerate(self.polys):
             string += f"entry {ind+1}: {poly} \n\n"
         return string
     
@@ -92,13 +98,14 @@ class VectorPolynomial(object):
         Apply the polynomial to a numpy vector.
         """
         
-        return np.array([poly(vector) for poly in self.data])
+        return np.array([poly(vector) for poly in self.polys])
     
-    def get_degree_k(self, degree: int) -> np.ndarray:
+    def get_degree_k(self, k: int) -> np.ndarray:
         """
         Return the rank-(1, k) tensor corresponding to concatenation of kth degrees of each polynomial along first axis
         """
-        return np.stack([poly.data[k] for poly in self.data], axis=0)
+        #return np.stack([poly.data[k] for poly in self.data], axis=0)
+        return self.data[k] if self.degree>=k else np.zeros([self.n_entries]+[self.n_vars]*k)
     
     def apply(self, array, vector):
         result = 0
@@ -136,7 +143,7 @@ class CoordinateSystem(object):
     dynamics: VectorPolynomial = None
     #dynamics: Union[Polynomial, TimeVaryingPolynomial]
     transform_string: str = None
-    integrator: Callable[np.ndarray, np.ndarray], dict] = None
+    integrator: Callable[[np.ndarray, np.ndarray], dict] = None
     
     def __repr__(self) -> str:
         return f"Transformation: {transform_string}" + " \n" + f"{name}_dot = {dynamics}"
