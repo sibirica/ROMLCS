@@ -1,5 +1,5 @@
 from abstract_defs import *
-from typing import Union
+from typing import Union, Optional
 #from scipy.optimize import root
 #from mpmath import findroot
 from scipy.optimize import fsolve
@@ -19,13 +19,19 @@ def invert(fun: Callable[np.ndarray, np.ndarray], p: np.ndarray, x0: np.ndarray,
     if debug:
         print('x0: ', x0)
         print('p: ', p)
+        print('unfolded p: ', fold(p))
         print('initial error:', fun(x0)-p)
     n_dim = len(x0)
-    real_fun = lambda x: np.hstack([fun(x).real-p.real, fun(x).imag-p.imag])
-    r = fsolve(lambda x: real_fun(x), np.hstack([x0.real, x0.imag]))
+    unfold = lambda y: np.hstack([y.real, y.imag])
+    fold = lambda z: z[:n_dim]+1.0j*z[n_dim:]
+    real_fun = lambda x: unfold(fun(fold(x))-p)
+    r = fsolve(real_fun, unfold(x0))
+    solution = fold(r)
     if debug:
-        print(r)
-    return r[:n_dim]
+        print("solution: ", r)
+        print("final error of real part: ", fun(r)-p)
+        print("final total error: ", fun(solution)-p)
+    return solution
     #return r.x[:n_dim]#+1.0j*r.x[n_dim:]
     #return findroot(lambda x: fun(x)-p, list(x0), solver='muller')
 
@@ -75,12 +81,25 @@ def diagonalize(coords: CoordinateSystem, new_name: str='y', debug: bool=False) 
     return CoordinateSystem(name=new_name, transform=transform, inverse_transform=inverse_transform, 
                             dynamics=new_dynamics, transform_string=transform_string)
 
+def make_poly_transform(JK_poly: VectorPolynomial) -> Callable[np.ndarray, np.ndarray]: 
+    return lambda x, *a, **kw: JK_poly(0, x)
+
+def make_inverse_transform(transform: Callable[np.ndarray, np.ndarray], choose_x0: Callable[np.ndarray, np.ndarray],
+    coords: Optional[CoordinateSystem]=None) -> Callable[np.ndarray, np.ndarray]:
+    # make the inverse transformation such that it also sets the memory point in the coordinate system for the future
+    def inverse(x, *a, **kw):
+        result = invert(transform, x, choose_x0(x, coords.memory_point if coords is not None else None))
+        if coords is not None:
+            coords.set_memory_point(result)
+        return result
+    return inverse
+
 def normal_form(coords: CoordinateSystem, new_name: str='z', debug: bool=False) -> CoordinateSystem: # for now, assume non-degenerate
     # also assuming cubic polynomial order for now
     A_tilde = coords.dynamics.get_degree_k(1)
     B_tilde = coords.dynamics.get_degree_k(2)
     C_tilde = coords.dynamics.get_degree_k(3)
-    I = np.eye(A_tilde.shape[0])
+    I = np.eye(A_tilde.shape[0], dtype=np.cdouble)
     J = np.zeros(B_tilde.shape, dtype=np.cdouble)
     K = np.zeros(C_tilde.shape, dtype=np.cdouble)
     eigs = np.diag(A_tilde)
@@ -95,20 +114,14 @@ def normal_form(coords: CoordinateSystem, new_name: str='z', debug: bool=False) 
     for x in it:
         inds = it.multi_index
         K[inds] = x/(eigs[inds[0]]-eigs[inds[1]]-eigs[inds[2]]-eigs[inds[3]])
+    
     JK_poly = VectorPolynomial([np.array([0, 0, 0]), I, J, K])
-    polynomial_transform = lambda x, *a, **kw: JK_poly(0, x)
-    inverse_poly_transform = lambda x, *a, **kw: invert(polynomial_transform, x, np.zeros_like(x))
-    #minus_JK_poly = VectorPolynomial([np.array([0, 0, 0]), I, -J, -K])
-    #inverse_poly_transform = lambda x, *a, **kw: minus_JK_poly(0, x)
+    minus_JK_poly = VectorPolynomial([np.array([0, 0, 0]), I, -J, -K])
+    polynomial_transform = make_poly_transform(JK_poly)
+    x0_guess = lambda x, y: minus_JK_poly(0, x) if y is None else y
+    inverse_poly_transform = make_inverse_transform(polynomial_transform, x0_guess, coords)
     transform = compose(polynomial_transform, coords.transform)
     inverse_transform = compose(coords.inverse_transform, inverse_poly_transform)
-    #print("TEST OF TRANFORM")
-    #print(transform(np.array([8.48528137, 8.48528137, 27.])))
-    #print(inverse_transform(np.array([0, 0, 0])))
-    #print(inverse_transform(transform(np.array([8.58528137, 8.48528137, 27.]))))
-    #tr1 = JK_poly(0, np.array([1, 1, 1]))
-    #print(tr1)
-    #print(invert(polynomial_transform, tr1, np.array([0, 0, 0])))
     transform_string = (f"{coords.transform_string}, {new_name} = {coords.name}"
                         + f" + J({coords.name}, {coords.name}) + K({coords.name}, {coords.name}, {coords.name})")
     dynamics = VectorPolynomial([np.array([0, 0, 0]), A_tilde])

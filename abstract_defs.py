@@ -97,7 +97,6 @@ class VectorPolynomial(object):
         """
         Apply the polynomial to a numpy vector.
         """
-        
         return np.array([poly(vector) for poly in self.polys])
     
     def get_degree_k(self, k: int) -> np.ndarray:
@@ -129,6 +128,7 @@ class CoordinateSystem(object):
     :attribute name: name of coordinate system
     :attribute old_name: name of old coordinate system
     :attribute base_point: base point near which the coordinates are defined
+    :attribute memory_point: last point mapped from (for more accurate inverse estimate)
     :attribute transform: function mapping original coordinates x to current coordinates x' (t-dependent?).
     :attribute inverse_transform: function mapping current coordinates x' to original coordinates x (t-dependent?).
     :attribute dynamics: callable (e.g. multivariate polynomial) representing RHS dynamics (t-dependent?).
@@ -138,6 +138,7 @@ class CoordinateSystem(object):
     name: str = "x"
     #old_name: str = "r"
     #base_point: np.ndarray = None
+    memory_point: np.ndarray = None
     transform: Callable[[Optional[float], np.ndarray], np.ndarray] = None
     inverse_transform: Callable[[Optional[float], np.ndarray], np.ndarray] = None
     dynamics: VectorPolynomial = None
@@ -147,6 +148,9 @@ class CoordinateSystem(object):
     
     def __repr__(self) -> str:
         return f"Transformation: {transform_string}" + " \n" + f"{name}_dot = {dynamics}"
+    
+    def set_memory_point(self, point: np.ndarray):
+        self.memory_point = point
     
 #@dataclass
 #class CallableTransformation(CoordinateTransformation):
