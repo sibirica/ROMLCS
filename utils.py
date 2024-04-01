@@ -22,7 +22,7 @@ def conjugate_dynamics(coords: CoordinateSystem, ts: np.ndarray, x0: np.ndarray,
     else:
         sol = integrate.solve_ivp(coords.dynamics, (min(ts), max(ts)), y0, t_eval=ts, **kwargs)
     ys = sol['y']
-    coords.set_memory_point(None) # reset inverse transform memory
+    coords.set_memory_point(x0) # reset inverse transform memory
     if debug:
         print("sol['y']: ", ys)
         print("ts: ", ts)

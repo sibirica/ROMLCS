@@ -89,7 +89,8 @@ def make_inverse_transform(transform: Callable[np.ndarray, np.ndarray], choose_x
     # make the inverse transformation such that it also sets the memory point in the coordinate system for the future
     def inverse(x, *a, **kw):
         result = invert(transform, x, choose_x0(x, coords.memory_point if coords is not None else None))
-        if coords is not None:
+        if coords is not None:            
+            #print(coords.memory_point)
             coords.set_memory_point(result)
         return result
     return inverse

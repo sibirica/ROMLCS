@@ -147,7 +147,7 @@ class CoordinateSystem(object):
     integrator: Callable[[np.ndarray, np.ndarray], dict] = None
     
     def __repr__(self) -> str:
-        return f"Transformation: {transform_string}" + " \n" + f"{name}_dot = {dynamics}"
+        return f"Transformation: {self.transform_string}" + " \n" + f"{self.name}_dot = {self.dynamics}"
     
     def set_memory_point(self, point: np.ndarray):
         self.memory_point = point
