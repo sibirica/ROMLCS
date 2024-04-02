@@ -41,13 +41,13 @@ def invert(fun: Callable[np.ndarray, np.ndarray], p: np.ndarray, x0: np.ndarray,
 def translate(shift: Union[np.ndarray, Callable[float, np.ndarray]], dynamics: VectorPolynomial, new_name: str="x'", debug: bool=False) ->CoordinateSystem: #coords: CoordinateSystem,
     if isinstance(shift, np.ndarray):
         #base_point = shift
-        transform = lambda x, *a, **kw: x-shift
-        inverse_transform = lambda x, *a, **kw: x+shift
+        transform = lambda x, *args, **kwargs: x-shift
+        inverse_transform = lambda x, *args, **kwargs: x+shift
         transform_string = f"{new_name} = x - {shift}"
     else:
         #base_point = shift(0)
-        transform = lambda x, t: x-shift(t)
-        inverse_transform = lambda x, t: x+shift(t)
+        transform = lambda x, t, *args, **kwargs: x-shift(t)
+        inverse_transform = lambda x, t, *args, **kwargs: x+shift(t)
         transform_string = f"{new_name} = x - s(t)"
         
     if debug:
@@ -69,8 +69,8 @@ def diagonalize(coords: CoordinateSystem, new_name: str='y', debug: bool=False) 
     #polys = [Polynomial([0, A_tilde[i, ...], B_tilde[i, ...], C_tilde[i, ...]]) for i in range(len(vals))]
     new_dynamics = VectorPolynomial([np.array([0, 0, 0]), A_tilde, B_tilde, C_tilde])
     
-    transform = compose(lambda x, *a: P_inv @ x, coords.transform)
-    inverse_transform = compose(coords.inverse_transform, lambda x, *a: P @ x)
+    transform = compose(lambda x, *args, **kwargs: P_inv @ x, coords.transform)
+    inverse_transform = compose(coords.inverse_transform, lambda x, *args, **kwargs: P @ x)
     transform_string = f"{coords.transform_string}, {new_name} = {P_inv}*{coords.name}"
     
     if debug:
@@ -84,15 +84,13 @@ def diagonalize(coords: CoordinateSystem, new_name: str='y', debug: bool=False) 
 def make_poly_transform(JK_poly: VectorPolynomial) -> Callable[np.ndarray, np.ndarray]: 
     return lambda x, *a, **kw: JK_poly(0, x)
 
+
 def make_inverse_transform(transform: Callable[np.ndarray, np.ndarray], choose_x0: Callable[np.ndarray, np.ndarray],
     coords: Optional[CoordinateSystem]=None) -> Callable[np.ndarray, np.ndarray]:
     # make the inverse transformation such that it also sets the memory point in the coordinate system for the future
-    def inverse(x, *a, **kw):
-        result = invert(transform, x, choose_x0(x, coords.memory_point if coords is not None else None))
-        if coords is not None:            
-            #print(coords.memory_point)
-            coords.set_memory_point(result)
-        return result
+    def inverse(x, *a, initial: bool=False, **kw):
+        inverse.result = invert(transform, x, choose_x0(x, None if initial else inverse.result))
+        return inverse.result
     return inverse
 
 def normal_form(coords: CoordinateSystem, new_name: str='z', debug: bool=False) -> CoordinateSystem: # for now, assume non-degenerate

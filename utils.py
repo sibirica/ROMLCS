@@ -22,10 +22,9 @@ def conjugate_dynamics(coords: CoordinateSystem, ts: np.ndarray, x0: np.ndarray,
     else:
         sol = integrate.solve_ivp(coords.dynamics, (min(ts), max(ts)), y0, t_eval=ts, **kwargs)
     ys = sol['y']
-    coords.set_memory_point(x0) # reset inverse transform memory
     if debug:
         print("sol['y']: ", ys)
         print("ts: ", ts)
         print(coords.inverse_transform(ys[:, 0], ts[0]))
-    return np.stack([coords.inverse_transform(ys[:, i], ts[i]) for i in range(ys.shape[1])], axis=-1)
+    return np.stack([coords.inverse_transform(ys[:, i], ts[i], initial=(i==0)) for i in range(ys.shape[1])], axis=-1)
     
