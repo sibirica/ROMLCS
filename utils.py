@@ -26,5 +26,6 @@ def conjugate_dynamics(coords: CoordinateSystem, ts: np.ndarray, x0: np.ndarray,
         print("sol['y']: ", ys)
         print("ts: ", ts)
         print(coords.inverse_transform(ys[:, 0], ts[0]))
-    return np.stack([coords.inverse_transform(ys[:, i], ts[i], initial=(i==0)) for i in range(ys.shape[1])], axis=-1)
+    return np.stack([coords.inverse_transform(ys[:, i], ts[i], initial=(i==0), reset_value=x0) 
+                     for i in range(ys.shape[1])], axis=-1)
     

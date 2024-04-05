@@ -88,8 +88,8 @@ def make_poly_transform(JK_poly: VectorPolynomial) -> Callable[np.ndarray, np.nd
 def make_inverse_transform(transform: Callable[np.ndarray, np.ndarray], choose_x0: Callable[np.ndarray, np.ndarray],
     coords: Optional[CoordinateSystem]=None) -> Callable[np.ndarray, np.ndarray]:
     # make the inverse transformation such that it also sets the memory point in the coordinate system for the future
-    def inverse(x, *a, initial: bool=False, **kw):
-        inverse.result = invert(transform, x, choose_x0(x, None if initial else inverse.result))
+    def inverse(x, *a, initial: bool=False, reset_value: np.ndarray=None, **kw):
+        inverse.result = invert(transform, x, choose_x0(x, reset_value if initial else inverse.result))
         return inverse.result
     return inverse
 
