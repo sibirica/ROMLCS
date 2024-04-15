@@ -89,8 +89,9 @@ def make_inverse_transform(transform: Callable[np.ndarray, np.ndarray], choose_x
     coords: Optional[CoordinateSystem]=None) -> Callable[np.ndarray, np.ndarray]:
     # make the inverse transformation such that it also sets the memory point in the coordinate system for the future
     def inverse(x, *a, initial: bool=False, reset_value: np.ndarray=None, **kw):
-        inverse.result = invert(transform, x, choose_x0(x, reset_value if initial else inverse.result))
+        inverse.result = invert(transform, x, choose_x0(x, coords.transform(reset_value) if initial else inverse.result))
         return inverse.result
+        #return reset_value if initial else inverse.result # force correct inverse if reset
     return inverse
 
 def normal_form(coords: CoordinateSystem, new_name: str='z', debug: bool=False) -> CoordinateSystem: # for now, assume non-degenerate
